@@ -12,6 +12,7 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 #include <math.h>
+#include <sys/time.h>
 
 // A single byte-type representing one channel of a pixel
 typedef unsigned char byte;
@@ -410,6 +411,12 @@ int main(void)
 
     Vec3 origin = Zero;
 
+    
+    //Start Timer
+    int rayCounter = 0;
+    struct timeval before, after;
+    gettimeofday(&before, NULL); 
+
     // Render
     for (int x = 0; x < WIDTH; x++) {
         for (int y = 0; y < HEIGHT; y++) {
@@ -437,6 +444,13 @@ int main(void)
             }
         }
     }
+
+    //TIMING
+    gettimeofday(&after, NULL);
+    printf("Reference code: %10.6f seconds \n", ((after.tv_sec + (after.tv_usec / 1000000.0)) -
+            (before.tv_sec + (before.tv_usec / 1000000.0))));
+
+    printf("Number of rays -> %d \n", rayCounter);
 
     // Output
     DrawWatermark(data);
