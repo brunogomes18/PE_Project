@@ -114,8 +114,8 @@ const static Vec3 Zero = {0};
 const static Vec3 Invalid = {-1, -1, -1};
 const static int FOV = 1; //3.1415/2;
 const static int MAX_DIST = 1000;
-const static unsigned int WIDTH = 1920;
-const static unsigned int HEIGHT = 1080;
+const static unsigned int WIDTH = 600;
+const static unsigned int HEIGHT = 600;
 
 /* Constructors */
 Sphere sphere_new(Vec3 centre, float radius, Material material) {
@@ -321,13 +321,17 @@ RgbColour raytrace(Vec3 origin, Vec3 dir, float min_t, float max_t,
     Vec3 normal = vec3_normalise(vec3_subtract(point, closest->centre));
     Material material = closest->material;
 
-    return vec3_clamp( vec3_multiply_scalar(material.diffuse,
-                                            lighting_compute(point, 
-                                                            normal,
-                                                            vec3_multiply_scalar(dir, -1),
-                                                            material.specular,lights, num_lights)  
-                                            ),
-                         0.0f, 255.0f // Clamp between 0 and 255
+    return vec3_clamp(
+        vec3_multiply_scalar(
+            material.diffuse,
+            lighting_compute(
+                point, normal,
+                vec3_multiply_scalar(dir, -1),
+                material.specular,
+                lights, num_lights
+            )
+        ),
+        0.0f, 255.0f // Clamp between 0 and 255
     );
 }
 
@@ -407,75 +411,46 @@ int main(void)
 
     Vec3 origin = Zero;
 
+    struct timeval before, after;
     
-    int rayCounter = 0;
-    struct timeval before_ray, after_ray, before_background, 
-                    after_background, before_coord, after_coord, before_draw, after_draw ;
-    float exec_ray=0, exec_background=0, exec_coord = 0, exec_draw=0;
+    gettimeofday(&before, NULL); 
 
     // Render
     for (int x = 0; x < WIDTH; x++) {
         for (int y = 0; y < HEIGHT; y++) {
 
-            gettimeofday(&before_background, NULL); 
             // Background
             data[(y*WIDTH + x) * 3 + 0] = (byte)(y/(float)WIDTH * 255);
             data[(y*WIDTH + x) * 3 + 1] = (byte)(x/(float)HEIGHT * 255);
             data[(y*WIDTH + x) * 3 + 2] = (byte)160;
-            gettimeofday(&after_background, NULL); 
-
-            gettimeofday(&before_coord, NULL);             
+            
             // Get Pixel in World Coords
             float x_world_coord = (2*(x + 0.5f)/(float)HEIGHT - 1) * screen_dim * aspect_ratio;
             float y_world_coord = -(2*(y + 0.5f)/(float)WIDTH - 1) * screen_dim;
             Vec3 dir = vec3_normalise(vec3_new(x_world_coord, y_world_coord, 1));
-            gettimeofday(&after_coord, NULL); 
 
-            gettimeofday(&before_ray, NULL); 
             // Raytrace Pixel
             RgbColour colour = raytrace(origin, dir, 1.0f, (float)MAX_DIST,
                                         spheres, NUM_SPHERES,
                                         lights, NUM_LIGHTS);
-            rayCounter++;
-            gettimeofday(&after_ray, NULL); 
 
-            gettimeofday(&before_draw, NULL);
             // Draw Geometry
             if (colour.x != -1) {
                 data[(y*WIDTH + x) * 3 + 0] = (byte)colour.x;
                 data[(y*WIDTH + x) * 3 + 1] = (byte)colour.y;
                 data[(y*WIDTH + x) * 3 + 2] = (byte)colour.z;
             }
-            gettimeofday(&after_draw, NULL);
-
-            exec_ray += ((after_ray.tv_sec + (after_ray.tv_usec / 1000000.0)) -
-                            (before_ray.tv_sec + (before_ray.tv_usec / 1000000.0)));
-
-            exec_background += ((after_background.tv_sec + (after_background.tv_usec / 1000000.0)) -
-                            (before_background.tv_sec + (before_background.tv_usec / 1000000.0)));
-            
-            exec_coord += ((after_coord.tv_sec + (after_coord.tv_usec / 1000000.0)) -
-                            (before_coord.tv_sec + (before_coord.tv_usec / 1000000.0)));
-            
-            exec_draw += ((after_draw.tv_sec + (after_draw.tv_usec / 1000000.0)) -
-                            (before_draw.tv_sec + (before_draw.tv_usec / 1000000.0)));
-
         }
     }
-    
-    float exec_time = exec_draw+ exec_coord + exec_ray + exec_background;
-    printf("Number of rays -> %d \n", rayCounter);
-    printf("Rays per second -> %f \n", rayCounter/exec_time);
-
-    printf("Background time: %f\n", exec_background);
-    printf("Coordinates time: %f\n", exec_coord);
-    printf("Raytrace time: %f\n", exec_ray);
-    printf("Draw time: %f\n", exec_draw);
-
-    printf("Total time: %f\n",exec_time);
-
     // Output
     DrawWatermark(data);
+
+    gettimeofday(&after, NULL); 
+
+    float exec_time = ((after.tv_sec + (after.tv_usec / 1000000.0)) -
+                            (before.tv_sec + (before.tv_usec / 1000000.0)));
+
+    printf("Total time: %f\n",exec_time);
 
     // Write to file
     printf("tinyray: writing to file!");

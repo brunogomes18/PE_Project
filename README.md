@@ -41,4 +41,7 @@ I created this toy raytracer to learn about basic raytracing (and for fun, of co
 
 The first link is especially helpful in understanding how raytracing works from a mathematical perspective.
 
+
+https://github.com/mjakeman/tinyray
+
 **I created this for fun for the UoA ENGGEN 131 Art Challenge**
