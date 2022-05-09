@@ -331,50 +331,6 @@ RgbColour raytrace(Vec3 origin, Vec3 dir, float min_t, float max_t,
     );
 }
 
-// Watermark: Says "MATT J"
-#define MARK_COLS 33
-#define MARK_ROWS 7
-int mark[MARK_ROWS][MARK_COLS] = {
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-    {0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0},
-    {0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0},
-    {0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0},
-    {0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0},
-    {0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0},
-    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-};
-
-// Draws a watermark on the screen using the above array
-// NOTE: Make sure size and stride do not cause the function to exceed
-// array bounds. This will cause a crash!
-void DrawWatermark(byte *data) {
-    int start_x = 20;
-    int start_y = 540;
-    int size = 3, stride = 1;
-
-    for (int i = 0; i < MARK_COLS; i++) {
-        for (int j = 0; j < MARK_ROWS; j++) {
-            int y_corner = start_y + j*(size*2 + stride);
-            int x_corner = start_x + i*(size*2 + stride);
-
-            // Draw Square
-            for (int x = x_corner; x < (x_corner + size); x++) {
-                for (int y = y_corner; y < (y_corner + size); y++) {
-                    if (mark[j][i] == 0) {
-                        data[(y*WIDTH + x) * 3 + 0] = (byte)(i/(float)MARK_COLS * 255) % 180;
-                        data[(y*WIDTH + x) * 3 + 1] = (byte)(j/(float)MARK_ROWS * 255) % 180;
-                        data[(y*WIDTH + x) * 3 + 2] = (byte)240;
-                    }
-                    else {
-                        data[(y*WIDTH + x) * 3 + 0] = (byte)255;
-                        data[(y*WIDTH + x) * 3 + 1] = (byte)255;
-                        data[(y*WIDTH + x) * 3 + 2] = (byte)255;
-                    }
-                }
-            }
-        }
-    }
-}
 
 int main(void)
 {
@@ -473,9 +429,6 @@ int main(void)
     printf("Draw time: %f\n", exec_draw);
 
     printf("Total time: %f\n",exec_time);
-
-    // Output
-    DrawWatermark(data);
 
     // Write to file
     printf("tinyray: writing to file!");

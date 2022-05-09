@@ -12,7 +12,6 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 #include <math.h>
-#include <sys/time.h>
 
 // A single byte-type representing one channel of a pixel
 typedef unsigned char byte;
@@ -114,8 +113,8 @@ const static Vec3 Zero = {0};
 const static Vec3 Invalid = {-1, -1, -1};
 const static int FOV = 1; //3.1415/2;
 const static int MAX_DIST = 1000;
-const static unsigned int WIDTH = 1920;
-const static unsigned int HEIGHT = 1920;
+const static unsigned int WIDTH = 600;
+const static unsigned int HEIGHT = 600;
 
 /* Constructors */
 Sphere sphere_new(Vec3 centre, float radius, Material material) {
@@ -335,6 +334,50 @@ RgbColour raytrace(Vec3 origin, Vec3 dir, float min_t, float max_t,
     );
 }
 
+// Watermark: Says "MATT J"
+#define MARK_COLS 33
+#define MARK_ROWS 7
+int mark[MARK_ROWS][MARK_COLS] = {
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0},
+    {0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0},
+    {0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0},
+    {0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0},
+    {0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+};
+
+// Draws a watermark on the screen using the above array
+// NOTE: Make sure size and stride do not cause the function to exceed
+// array bounds. This will cause a crash!
+void DrawWatermark(byte *data) {
+    int start_x = 20;
+    int start_y = 540;
+    int size = 3, stride = 1;
+
+    for (int i = 0; i < MARK_COLS; i++) {
+        for (int j = 0; j < MARK_ROWS; j++) {
+            int y_corner = start_y + j*(size*2 + stride);
+            int x_corner = start_x + i*(size*2 + stride);
+
+            // Draw Square
+            for (int x = x_corner; x < (x_corner + size); x++) {
+                for (int y = y_corner; y < (y_corner + size); y++) {
+                    if (mark[j][i] == 0) {
+                        data[(y*WIDTH + x) * 3 + 0] = (byte)(i/(float)MARK_COLS * 255) % 180;
+                        data[(y*WIDTH + x) * 3 + 1] = (byte)(j/(float)MARK_ROWS * 255) % 180;
+                        data[(y*WIDTH + x) * 3 + 2] = (byte)240;
+                    }
+                    else {
+                        data[(y*WIDTH + x) * 3 + 0] = (byte)255;
+                        data[(y*WIDTH + x) * 3 + 1] = (byte)255;
+                        data[(y*WIDTH + x) * 3 + 2] = (byte)255;
+                    }
+                }
+            }
+        }
+    }
+}
 
 int main(void)
 {
@@ -367,13 +410,12 @@ int main(void)
 
     Vec3 origin = Zero;
 
-    struct timeval before, after;
+    int x,y;
     
-    gettimeofday(&before, NULL); 
-
     // Render
-    for (int x = 0; x < WIDTH; x++) {
-        for (int y = 0; y < HEIGHT; y++) {
+#pragma omp parallel for collapse(2) private(x,y) schedule(dynamic,1)
+    for (x = 0; x < WIDTH; x++) {
+        for ( y = 0; y < HEIGHT; y++) {
 
             // Background
             data[(y*WIDTH + x) * 3 + 0] = (byte)(y/(float)WIDTH * 255);
@@ -399,16 +441,12 @@ int main(void)
         }
     }
 
-    gettimeofday(&after, NULL); 
-
-    float exec_time = ((after.tv_sec + (after.tv_usec / 1000000.0)) -
-                            (before.tv_sec + (before.tv_usec / 1000000.0)));
-
-    printf("Total time: %f\n",exec_time);
+    // Output
+//    DrawWatermark(data);
 
     // Write to file
     printf("tinyray: writing to file!");
-    if (!stbi_write_bmp("output.bmp", WIDTH, HEIGHT, 3, data))
+    if (!stbi_write_bmp("output-parallel.bmp", WIDTH, HEIGHT, 3, data))
         printf("tinyray: failed to write image!");
 
     return 0;
