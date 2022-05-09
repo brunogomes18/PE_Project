@@ -115,7 +115,7 @@ const static Vec3 Invalid = {-1, -1, -1};
 const static int FOV = 1; //3.1415/2;
 const static int MAX_DIST = 1000;
 const static unsigned int WIDTH = 1920;
-const static unsigned int HEIGHT = 1080;
+const static unsigned int HEIGHT = 1920;
 
 /* Constructors */
 Sphere sphere_new(Vec3 centre, float radius, Material material) {

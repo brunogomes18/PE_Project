@@ -12,6 +12,7 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 #include <math.h>
+#include <sys/time.h>
 
 // A single byte-type representing one channel of a pixel
 typedef unsigned char byte;
@@ -113,8 +114,8 @@ const static Vec3 Zero = {0};
 const static Vec3 Invalid = {-1, -1, -1};
 const static int FOV = 1; //3.1415/2;
 const static int MAX_DIST = 1000;
-const static unsigned int WIDTH = 600;
-const static unsigned int HEIGHT = 600;
+const static unsigned int WIDTH = 1920;
+const static unsigned int HEIGHT = 1920;
 
 /* Constructors */
 Sphere sphere_new(Vec3 centre, float radius, Material material) {
@@ -411,7 +412,11 @@ int main(void)
     Vec3 origin = Zero;
 
     int x,y;
+
+    struct timeval before, after;
     
+    gettimeofday(&before, NULL); 
+
     // Render
 #pragma omp parallel for collapse(2) private(x,y) schedule(dynamic,1)
     for (x = 0; x < WIDTH; x++) {
@@ -440,6 +445,13 @@ int main(void)
             }
         }
     }
+
+     gettimeofday(&after, NULL); 
+
+    float exec_time = ((after.tv_sec + (after.tv_usec / 1000000.0)) -
+                            (before.tv_sec + (before.tv_usec / 1000000.0)));
+
+    printf("Total time: %f\n",exec_time);
 
     // Output
 //    DrawWatermark(data);
