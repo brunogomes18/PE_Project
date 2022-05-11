@@ -12,7 +12,7 @@ tinyray_algo: tinyray_algo.c
 
 
 tinyray_openmp: tinyray_openmp.c
-	gcc tinyray_openmp.c -Ofast -Wall -mavx2 -fopenmp -lm -o tinyray_openmp 
+	gcc tinyray_openmp.c -O3 -march=native -Wall -fopenmp -lm -o tinyray_openmp 
 
 clean: 
 	$(RM) tinyray_base tinyray_times tinyray_algo tinyray_simd tinyray_openmp

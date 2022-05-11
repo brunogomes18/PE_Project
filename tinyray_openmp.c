@@ -419,7 +419,7 @@ int main(void)
     gettimeofday(&before, NULL); 
 
     // Render
-#pragma omp parallel for collapse(2) private(x,y) schedule(dynamic,1)
+#pragma omp parallel for simd shared(data) collapse(2) schedule(guided)
     for (x = 0; x < WIDTH; x++) {
         for ( y = 0; y < HEIGHT; y++) {
 
@@ -438,8 +438,6 @@ int main(void)
             RgbColour colour = raytrace(origin, dir, 1.0f, (float)MAX_DIST,
                                         spheres, NUM_SPHERES,
                                         lights, NUM_LIGHTS);
-            rayCounter++;
-
             // Draw Geometry
             if (colour.x != -1) {
                 data[(y*WIDTH + x) * 3 + 0] = (byte)colour.x;
