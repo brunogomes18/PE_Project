@@ -411,8 +411,6 @@ int main(void)
 
     Vec3 origin = Zero;
 
-    int x,y;
-
     struct timeval before, after;
         int rayCounter = 0;
 
@@ -420,8 +418,8 @@ int main(void)
 
     // Render
 #pragma omp parallel for simd shared(data) collapse(2) schedule(guided)
-    for (x = 0; x < WIDTH; x++) {
-        for ( y = 0; y < HEIGHT; y++) {
+    for (int x = 0; x < WIDTH; x++) {
+        for (int y = 0; y < HEIGHT; y++) {
 
             // Background
             data[(y*WIDTH + x) * 3 + 0] = (byte)(y/(float)WIDTH * 255);
