@@ -414,7 +414,8 @@ int main(void)
     int x,y;
 
     struct timeval before, after;
-    
+        int rayCounter = 0;
+
     gettimeofday(&before, NULL); 
 
     // Render
@@ -432,10 +433,12 @@ int main(void)
             float y_world_coord = -(2*(y + 0.5f)/(float)WIDTH - 1) * screen_dim;
             Vec3 dir = vec3_normalise(vec3_new(x_world_coord, y_world_coord, 1));
 
+
             // Raytrace Pixel
             RgbColour colour = raytrace(origin, dir, 1.0f, (float)MAX_DIST,
                                         spheres, NUM_SPHERES,
                                         lights, NUM_LIGHTS);
+            rayCounter++;
 
             // Draw Geometry
             if (colour.x != -1) {
@@ -450,6 +453,8 @@ int main(void)
 
     float exec_time = ((after.tv_sec + (after.tv_usec / 1000000.0)) -
                             (before.tv_sec + (before.tv_usec / 1000000.0)));
+
+    printf("Rays per second -> %f \n", rayCounter/exec_time);
 
     printf("Total time: %f\n",exec_time);
 
