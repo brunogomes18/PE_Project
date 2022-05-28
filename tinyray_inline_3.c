@@ -32,32 +32,8 @@ Vec3 vec3_new(float x, float y, float z) {
     return vec;
 }
 
-Vec3 vec3_add(Vec3 a, Vec3 b) {
-    return vec3_new(a.x + b.x, a.y + b.y, a.z + b.z);
-}
-
-Vec3 vec3_subtract(Vec3 a, Vec3 b) {
-    return vec3_new(a.x - b.x, a.y - b.y, a.z - b.z);
-}
-
-Vec3 vec3_subtract_scalar(Vec3 a, float b) {
-    return vec3_new(a.x - b, a.y - b, a.z - b);
-}
-
 Vec3 vec3_divide_scalar(Vec3 a, float b) {
     return vec3_new(a.x/b, a.y/b, a.z/b);
-}
-
-Vec3 vec3_multiply(Vec3 a, Vec3 b) {
-    return vec3_new(a.x*b.x, a.y*b.y, a.z*b.z);
-}
-
-Vec3 vec3_multiply_scalar(Vec3 a, float b) {
-    return vec3_new(a.x*b, a.y*b, a.z*b);
-}
-
-float vec3_dot(Vec3 a, Vec3 b) {
-    return a.x*b.x + a.y*b.y + a.z*b.z;
 }
 
 float vec3_len(Vec3 v) {
@@ -65,16 +41,10 @@ float vec3_len(Vec3 v) {
 }
 
 Vec3 vec3_normalise(Vec3 v) {
-    return vec3_divide_scalar(v, vec3_len(v)); // Calculate unit vector
+    float r = 1/sqrtf((v.x * v.x) + (v.y * v.y) + (v.z * v.z));
+    return (Vec3) {v.x*r, v.y*r, v.z*r};
 }
 
-Vec3 vec3_clamp(Vec3 v, float min_value, float max_value) {
-    return vec3_new(
-        fmin(fmax(v.x, min_value), max_value),
-        fmin(fmax(v.y, min_value), max_value),
-        fmin(fmax(v.z, min_value), max_value)
-    );
-}
 // END - vectors
 
 /* Struct Definitions */
@@ -192,23 +162,23 @@ float lighting_compute(Vec3 point, Vec3 normal,
             Vec3 light_ray;
             if (light->type == PointLight)
                 // Point Light: Direction of ray from light to point
-                light_ray = vec3_subtract(light->position, point);
+                light_ray = (Vec3) {light->position.x - point.x, light->position.y - point.y, light->position.z - point.z};
             else
                 // Directional Light: Direction
                 light_ray = light->direction;		
 
             // Diffuse
-            float reflect = vec3_dot(normal, light_ray);
-            intensity += (light->intensity * reflect)/(vec3_len(normal) * vec3_len(light_ray));
+            float reflect = normal.x * light_ray.x + normal.y * light_ray.y + normal.z * light_ray.z;
+            intensity += (light->intensity * reflect)/vec3_len(light_ray);
 
             // Specular
             if (specular != -1)
             {
-                Vec3 r = vec3_subtract(vec3_multiply_scalar(normal, 2 * vec3_dot(normal, light_ray)), light_ray);
-                float reflect_view_proj = vec3_dot(r, view);
+                Vec3 r = { normal.x * 2 * reflect - light_ray.x, normal.y * 2 * reflect - light_ray.y, normal.z * 2 * reflect - light_ray.z };
+                float reflect_view_proj = r.x*view.x + r.y*view.y + r.z*view.z;
                 if (reflect_view_proj > 0)
                 {
-                    float cosine = reflect_view_proj/(vec3_len(r) * vec3_len(view));
+                    float cosine = reflect_view_proj/(vec3_len(r));
                     intensity += light->intensity * powf(cosine, specular);
                 }
             }
@@ -234,15 +204,15 @@ int do_sphere_raycast(Sphere sphere, Ray ray, float *dist0, float *dist1) {
     *dist1 = 0;
 
     // Find L and tca
-    Vec3 L = vec3_subtract(sphere.centre, ray.origin);
-    float tca = vec3_dot(L, ray.direction);
+    Vec3 L = (Vec3) { sphere.centre.x - ray.origin.x, sphere.centre.y - ray.origin.y, sphere.centre.z - ray.origin.z };
+    float tca = L.x * ray.direction.x + L.y * ray.direction.y + L.z * ray.direction.z;
 
     // Discard if intersection is behind origin
     if (tca < 0)
         return 0;
 
     // Find d
-    float d = sqrtf(vec3_dot(L, L) - tca * tca);
+    float d = sqrtf(L.x*L.x + L.y*L.y + L.z*L.z - tca * tca);
     if (d > sphere.radius)
         return 0;
 
@@ -318,22 +288,18 @@ RgbColour raytrace(Vec3 origin, Vec3 dir, float min_t, float max_t,
         return Invalid;
     }
 
-    Vec3 point = vec3_add(origin, vec3_multiply_scalar(dir, t_comp));
-    Vec3 normal = vec3_normalise(vec3_subtract(point, closest->centre));
+    Vec3 point = (Vec3) { origin.x + dir.x * t_comp, origin.y + dir.y * t_comp, origin.z + t_comp * dir.z };
+    Vec3 normal = vec3_normalise((Vec3) {point.x - closest->centre.x, point.y - closest->centre.y, point.z - closest->centre.z});
     Material material = closest->material;
 
-    return vec3_clamp(
-        vec3_multiply_scalar(
-            material.diffuse,
-            lighting_compute(
-                point, normal,
-                vec3_multiply_scalar(dir, -1),
-                material.specular,
-                lights, num_lights
-            )
-        ),
-        0.0f, 255.0f // Clamp between 0 and 255
+    float intensity = lighting_compute(
+        point, normal,
+        (Vec3) {-1*dir.x, -1*dir.y, -1*dir.z},
+        material.specular,
+        lights, num_lights
     );
+
+    return (Vec3) { fmin(255, fmax(0, material.diffuse.x * intensity)), fmin(255, fmax(0, material.diffuse.y * intensity)), fmin(255, fmax(0, material.diffuse.z * intensity)) };
 }
 
 
@@ -384,7 +350,11 @@ int main(void)
             // Get Pixel in World Coords
             float x_world_coord = (2*(x + 0.5f)/(float)HEIGHT - 1) * screen_dim * aspect_ratio;
             float y_world_coord = -(2*(y + 0.5f)/(float)WIDTH - 1) * screen_dim;
-            Vec3 dir = vec3_normalise(vec3_new(x_world_coord, y_world_coord, 1));
+
+            //Vec3 dir = vec3_normalise((Vec3) { x_world_coord, y_world_coord, 1 });
+            float r = 1/sqrtf(x_world_coord*x_world_coord + y_world_coord*y_world_coord + 1);
+            Vec3 dir = (Vec3) {x_world_coord*r, y_world_coord*r, r};
+            //Vec3 dir = (Vec3) {x_world_coord/len, y_world_coord/len, len};
 
             // Raytrace Pixel
             RgbColour colour = raytrace(origin, dir, 1.0f, (float)MAX_DIST,
