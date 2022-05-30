@@ -77,10 +77,10 @@ typedef struct {
 } Light;
 
 /* Globals */
-const static Vec3 Zero = {0};
-__constant__ static Vec3 Invalid;
-const static int FOV = 1; //3.1415/2;
-const static int MAX_DIST = 1000;
+__constant__ static Vec3 Zero = { 0, 0, 0 };
+__constant__ static Vec3 Invalid = { -1, -1, -1 };
+__constant__ static int FOV = 1; //3.1415/2;
+__constant__ static int MAX_DIST = 1000;
 const static unsigned int WIDTH = 1920;
 const static unsigned int HEIGHT = 1920;
 
@@ -202,6 +202,8 @@ __device__ int do_sphere_raycast(Sphere sphere, Ray ray, float *dist0, float *di
 
     // Find L and tca
     Vec3 L = (Vec3) { sphere.centre.x - ray.origin.x, sphere.centre.y - ray.origin.y, sphere.centre.z - ray.origin.z };
+
+    //printf("%f %f %f\n", sphere.centre.x, sphere.centre.y, sphere.centre.z);
     float tca = L.x * ray.direction.x + L.y * ray.direction.y + L.z * ray.direction.z;
 
     // Discard if intersection is behind origin
@@ -225,9 +227,11 @@ __device__ int do_sphere_raycast(Sphere sphere, Ray ray, float *dist0, float *di
     if (t0 < 0 && t1 < 0)
         return 0;
 
+    //printf("sphere %f %f %f %f %f\n", t0, t1, tca, thc, d);
+
     *dist0 = t0;
     *dist1 = t1;
-    
+
     return 1; // Intersection found
 }
 
@@ -254,15 +258,16 @@ __device__ RgbColour raytrace(Vec3 origin, Vec3 dir, float min_t, float max_t,
     // distance to the point of intersection)
     float t_comp = (float)MAX_DIST;
 
-    printf("jjjjjj");
+    //printf("jjjjjj");
     // Ray to test
     Ray ray = ray_new(origin, dir);
 
-    printf("ffff");
+    //printf("ffff");
     // Cycle through all spheres and depth-test
     for (int i = 0; i < num_spheres; i++)
     {
         float dist0, dist1;
+        //printf("%f, %f, %f\n", dir.x, dir.y, dir.z);
         if (do_sphere_raycast(spheres[i], ray, &dist0, &dist1))
         {
             // Check dist0
@@ -283,16 +288,16 @@ __device__ RgbColour raytrace(Vec3 origin, Vec3 dir, float min_t, float max_t,
         }
     }
 
-    printf("iiiiii");
+    //printf("iiiiii");
     if (!closest) {
-        Invalid.x = -1;
         return Invalid;
     }
 
     Vec3 point = (Vec3) { origin.x + dir.x * t_comp, origin.y + dir.y * t_comp, origin.z + t_comp * dir.z };
+    //printf("bla2\n");
     Vec3 normal = vec3_normalise((Vec3) {point.x - closest->centre.x, point.y - closest->centre.y, point.z - closest->centre.z});
     Material material = closest->material;
-    printf("ooooo");
+    //printf("ooooo");
 
     float intensity = lighting_compute(
         point, normal,
@@ -308,6 +313,7 @@ __device__ RgbColour raytrace(Vec3 origin, Vec3 dir, float min_t, float max_t,
 static void checkCudaCall(cudaError_t result) {
     if (result != cudaSuccess) {
         printf("cuda error \n");
+        printf(cudaGetErrorString(result));
         exit(1);
     }
 }
@@ -342,41 +348,35 @@ static void checkCudaCall(cudaError_t result) {
     */
 
 __global__ void computeKernel(byte* data,float screen_dim, float aspect_ratio, Vec3 origin, Sphere* spheres, Light* lights){
-    int x = threadIdx.x + blockIdx.x * blockDim.x;
-    int y = threadIdx.y + blockIdx.y * blockDim.y;
-    if((x >= 1000) || (y >= 1000)) return;
+    int x = (threadIdx.x + blockIdx.x * blockDim.x) % 1920;
+    int y = (threadIdx.x + blockIdx.x * blockDim.x) / 1920;
+    if((x >= 1920) || (y >= 1920)) return;
 
     // Background
     data[(y*WIDTH + x) * 3 + 0] = (byte)(y/(float)WIDTH * 255);
     data[(y*WIDTH + x) * 3 + 1] = (byte)(x/(float)HEIGHT * 255);
     data[(y*WIDTH + x) * 3 + 2] = (byte)160;
 
-    float x_world_coord = (2*(x + 0.5f)/(float)HEIGHT - 1) * screen_dim * aspect_ratio;
-    float y_world_coord = -(2*(y + 0.5f)/(float)WIDTH - 1) * screen_dim;
+    float x_world_coord = (2*(x + 0.5)/(float)WIDTH - 1) * screen_dim * aspect_ratio;
+    float y_world_coord = -(2*(y + 0.5)/(float)HEIGHT - 1) * screen_dim;
 
-    printf("ola");
-
+    //printf("%d %d %f %f\n", x, y, x_world_coord, y_world_coord);
 
     float r = 1/sqrtf(x_world_coord*x_world_coord + y_world_coord*y_world_coord + 1);
     Vec3 dir = (Vec3) {x_world_coord*r, y_world_coord*r, r};
 
-     printf("ola1");
     // Raytrace Pixel
     RgbColour colour = raytrace(origin, dir, 1.0f, (float)MAX_DIST,spheres, 4,lights, 3);
-
-    printf("return");
 
     if (colour.x != -1) {
         data[(y*WIDTH + x) * 3 + 0] = (byte)colour.x;
         data[(y*WIDTH + x) * 3 + 1] = (byte)colour.y;
         data[(y*WIDTH + x) * 3 + 2] = (byte)colour.z;
+        //printf("%d %d %f %f %f\n", x, y, colour.x, colour.y, colour.z);
     }
 
 
-
     return;
-
-
 }
 
 
@@ -398,7 +398,7 @@ int main(void)
     spheres[0] = sphere_new(vec3_new(-0.75f, -0.2f, 6.5f), 1.5f, red);
     spheres[1] = sphere_new(vec3_new(0, -1, 5), 1.0f, blue);
     spheres[2] = sphere_new(vec3_new(2, -0.5, 8), 3.0f, white);
-    spheres[3] = sphere_new(vec3_new(0, -4001, 0), 4000, ground);
+    spheres[3] = sphere_new(vec3_new(0, -4001, 0.1), 0.1f, ground);
 
     // Lights
     #define NUM_LIGHTS 3
@@ -420,21 +420,21 @@ int main(void)
 
      // allocate the vectors on the GPU
     byte* deviceData = NULL;
-    checkCudaCall(cudaMalloc((void **) &deviceData,3*WIDTH*HEIGHT * sizeof(byte)));
+    checkCudaCall(cudaMalloc(&deviceData,3*1920*1920 * sizeof(byte)));
     if (deviceData == NULL) {
         printf("Error in cudaMalloc! \n");
         return 0;
     }
 
     Sphere* deviceSpheres = NULL;
-    checkCudaCall(cudaMalloc((void **) &deviceSpheres,4 * sizeof(Sphere)));
+    checkCudaCall(cudaMalloc(&deviceSpheres,4 * sizeof(Sphere)));
     if (deviceSpheres == NULL) {
         printf("Error in cudaMalloc! \n");
         return 0;
     }
 
     Light* deviceLights = NULL;
-    checkCudaCall(cudaMalloc((void **) &deviceLights,3 * sizeof(Light)));
+    checkCudaCall(cudaMalloc(&deviceLights,3 * sizeof(Light)));
     if (deviceLights == NULL) {
         printf("Error in cudaMalloc! \n");
         return 0;
@@ -442,8 +442,8 @@ int main(void)
 
     // copy the original vectors to the GPU
     checkCudaCall(cudaMemcpy(deviceData, data, 3*WIDTH*HEIGHT, cudaMemcpyHostToDevice));
-    checkCudaCall(cudaMemcpy(deviceLights, lights, 3, cudaMemcpyHostToDevice));
-    checkCudaCall(cudaMemcpy(deviceSpheres, spheres, 4, cudaMemcpyHostToDevice));
+    checkCudaCall(cudaMemcpy(deviceLights, lights, sizeof(Light[3]), cudaMemcpyHostToDevice));
+    checkCudaCall(cudaMemcpy(deviceSpheres, spheres, sizeof(Sphere[4]), cudaMemcpyHostToDevice));
 
     // Kernel function
     computeKernel<<<n/threadBlockSize +1, threadBlockSize>>>(deviceData,screen_dim,aspect_ratio,origin,deviceSpheres,deviceLights);
