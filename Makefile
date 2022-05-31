@@ -1,4 +1,4 @@
-all: tinyray_base tinyray_times tinyray_algo tinyray_openmp tinyray_opt1 tinyray_opt2 tinyray_opt3 tinyray_cuda_base
+all: tinyray_base tinyray_times tinyray_algo tinyray_openmp tinyray_opt1 tinyray_opt2 tinyray_opt3 tinyray_cuda_base tinyray_cuda_base_streams
 
 tinyray_base: tinyray_base.c
 	gcc tinyray_base.c -lm -o tinyray_base 
@@ -26,5 +26,8 @@ tinyray_openmp: tinyray_openmp.c
 tinyray_cuda_base: tinyray_cuda_base.cu
 	nvcc -O3 --expt-relaxed-constexpr tinyray_cuda_base.cu -o tinyray_cuda_base 
 
+tinyray_cuda_base_streams: tinyray_cuda_base_streams.cu
+	nvcc -O3 --expt-relaxed-constexpr tinyray_cuda_base_streams.cu -o tinyray_cuda_base_streams 
+
 clean: 
-	$(RM) tinyray_base tinyray_times tinyray_algo tinyray_simd tinyray_openmp tinyray_cuda_base
+	$(RM) tinyray_base tinyray_times tinyray_algo tinyray_simd tinyray_openmp tinyray_cuda_base tinyray_cuda_base_streams
