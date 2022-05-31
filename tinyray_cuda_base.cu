@@ -79,7 +79,7 @@ typedef struct {
 /* Globals */
 __constant__ static Vec3 Zero = { 0, 0, 0 };
 __constant__ static Vec3 Invalid = { -1, -1, -1 };
-__constant__ static int FOV = 1; //3.1415/2;
+const static int FOV = 1; //3.1415/2;
 __constant__ static int MAX_DIST = 1000;
 const static unsigned int WIDTH = 1920;
 const static unsigned int HEIGHT = 1920;
@@ -357,10 +357,10 @@ __global__ void computeKernel(byte* data,float screen_dim, float aspect_ratio, V
     data[(y*WIDTH + x) * 3 + 1] = (byte)(x/(float)HEIGHT * 255);
     data[(y*WIDTH + x) * 3 + 2] = (byte)160;
 
-    float x_world_coord = (2*(x + 0.5)/(float)WIDTH - 1) * screen_dim * aspect_ratio;
-    float y_world_coord = -(2*(y + 0.5)/(float)HEIGHT - 1) * screen_dim;
+    float x_world_coord = (2*(x + 0.5f)/(float)HEIGHT - 1) * screen_dim * aspect_ratio;
+    float y_world_coord = -(2*(y + 0.5f)/(float)WIDTH - 1) * screen_dim;
 
-    //printf("%d %d %f %f\n", x, y, x_world_coord, y_world_coord);
+    //printf("%d %d %f %f %f %f\n", x, y, x_world_coord, y_world_coord, screen_dim, aspect_ratio);
 
     float r = 1/sqrtf(x_world_coord*x_world_coord + y_world_coord*y_world_coord + 1);
     Vec3 dir = (Vec3) {x_world_coord*r, y_world_coord*r, r};
@@ -398,7 +398,7 @@ int main(void)
     spheres[0] = sphere_new(vec3_new(-0.75f, -0.2f, 6.5f), 1.5f, red);
     spheres[1] = sphere_new(vec3_new(0, -1, 5), 1.0f, blue);
     spheres[2] = sphere_new(vec3_new(2, -0.5, 8), 3.0f, white);
-    spheres[3] = sphere_new(vec3_new(0, -4001, 0.1), 0.1f, ground);
+    spheres[3] = sphere_new(vec3_new(0, -4001, 0), 4000, ground);
 
     // Lights
     #define NUM_LIGHTS 3
